@@ -1,0 +1,7 @@
+dropdb -U postgres beer_import_db
+createdb -U postgres beer_import_db
+psql -U postgres -d beer_import_db -f main.sql
+psql -U postgres -d beer_import_db -f fill.sql
+python generate_test_data.py --db beer_import_db
+
+
