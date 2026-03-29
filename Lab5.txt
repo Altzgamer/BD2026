@@ -1,0 +1,6 @@
+В windows cmd 
+
+chcp 65001
+SET PGCLIENTENCODING=UTF8
+SET PAGER=
+psql -U postgres -d beer_import_db -f queries.sql
