@@ -1,0 +1,1 @@
+psql -U postgres -d beer_import_db -f triggers.sql
