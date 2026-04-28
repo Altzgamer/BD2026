@@ -4,6 +4,8 @@ SET search_path TO beer_import;
 
 \echo '---1---'
 
+
+EXPLAIN (ANALYZE, BUFFERS)
 SELECT
     b.name AS "Название пива",
     b.id AS "ID пива",
@@ -225,6 +227,8 @@ ORDER BY b.name;
 
 \echo '---5---'
 
+
+EXPLAIN (ANALYZE, BUFFERS)
 WITH 
     sales_detail AS (
         SELECT
