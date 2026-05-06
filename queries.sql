@@ -4,6 +4,9 @@ SET search_path TO beer_import;
 
 \echo '---1---'
 
+SET enable_indexscan = OFF;
+SET enable_indexonlyscan = OFF;
+SET enable_bitmapscan = OFF;
 
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT

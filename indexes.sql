@@ -4,34 +4,22 @@ SET search_path TO beer_import;
 
 DROP INDEX IF EXISTS idx_td_transfer_date_id;
 DROP INDEX IF EXISTS idx_td_recent_contract;
-DROP INDEX IF EXISTS idx_tdi_document_beer_covering;
-DROP INDEX IF EXISTS idx_ws_beer_quantity;
-DROP INDEX IF EXISTS idx_dc_id_venue;
-
+DROP INDEX IF EXISTS idx_document_beer;
 
 CREATE INDEX idx_td_transfer_date_id -- составной
-ON transfer_document (transfer_date, id);
+ON transfer_document (transfer_date, id); 
 
 CREATE INDEX idx_td_recent_contract -- частичный
 ON transfer_document (transfer_date, contract_id)
 WHERE transfer_date >= '2026-01-01'::date;
 
-CREATE INDEX idx_tdi_document_beer_covering -- покрывающий
+CREATE INDEX idx_document_beer -- покрывающий
 ON transfer_document_item (document_id, beer_id)
 INCLUDE (quantity, actual_price);
 
-CREATE INDEX idx_ws_beer_quantity -- покрывающий
-ON warehouse_stock (beer_id)
-INCLUDE (quantity);
-
-CREATE INDEX idx_dc_id_venue -- составной
-ON delivery_contract (id, venue_id);
-
-ANALYZE transfer_document;
+ANALYZE transfer_document; 
 ANALYZE transfer_document_item;
 ANALYZE warehouse_stock;
-ANALYZE delivery_contract;
-
 
 \echo '---1---'
 
