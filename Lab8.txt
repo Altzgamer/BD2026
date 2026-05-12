@@ -1,0 +1,110 @@
+В двух консолях
+
+set LC_MESSAGES=English
+psql -U postgres -d beer_import_db
+SET lc_messages TO 'en_US.UTF-8';
+SET search_path TO beer_import, public;
+
+--------------------------------------
+
+Non-repeatable Read
+Транзакция читает одну и ту же строку дважды и получает разные значения, потому что другая транзакция успела её изменить и закоммитить между двумя чтениями.
+
+
+А:
+BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED;
+SELECT id, retail_price_rub FROM beer WHERE id = 1;
+
+B:
+BEGIN;
+UPDATE beer SET retail_price_rub = COALESCE(retail_price_rub, 0) + 100 WHERE id = 1;
+COMMIT;
+
+A:
+SELECT id, retail_price_rub FROM beer WHERE id = 1;
+COMMIT;
+
+--------------------------------------
+ 
+Phantom Read 
+Транзакция делает один и тот же запрос с условием дважды и получает разное количество строк, потому что другая транзакция вставила или удалила строки между этими двумя чтениями.
+
+
+A:
+BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED;
+SELECT COUNT(*) AS beer_cnt
+FROM beer
+WHERE style_id = 1;
+
+B:
+BEGIN;
+INSERT INTO beer (brewery_id, style_id, name, alcohol_pct) 
+VALUES (1, 1, 'Phantom Stout', 6.5);
+COMMIT;
+
+A:
+SELECT COUNT(*) AS beer_cnt
+FROM beer
+WHERE style_id = 1;
+COMMIT;
+ ------------------------------------------------
+Write skew
+Две транзакции читают общее условие, меняют разные строки. В результате итоговое состояние нарушает правило.
+в компании должен быть хотя бы один активный сотрудник с должностью position_id = 1. Изначально их двое id = 1 и id = 2. Каждая сессия проверяет количество менеджеров, видит, что их двое, и увольняет по одному менеджеру. По отдельности операции корректны
+
+А:
+BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+B:
+BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+A:
+SELECT COUNT(*) FROM employee WHERE position_id = 1 AND is_active = true;
+B:
+SELECT COUNT(*) FROM employee WHERE position_id = 1 AND is_active = true;
+A:
+UPDATE employee SET is_active = false WHERE id = 1;
+B:
+UPDATE employee SET is_active = false WHERE id = 2;
+A:
+COMMIT;
+B:
+COMMIT;
+
+---------------------------------------------------
+
+SAVEPOINT
+нужен, когда внутри транзакции есть шаг который можно откатить отдельно 
+Нужно использовать ROLLBACK
+после любой ошибки внутри транзакции все последующие запросы будут выдавать ошибку
+
+A:
+BEGIN;
+INSERT INTO country (name) VALUES ('Belgium');
+
+B:
+SELECT * FROM country WHERE name = 'Belgium'; -- Не видно незакоммиченные данные
+
+A:
+SAVEPOINT sp_after_country;
+INSERT INTO brewery (name, country_id) VALUES ('Err', 9999);
+SELECT * FROM country; -- Ошибка в транзакции, поэтому все что дальше будет падать
+ROLLBACK TO sp_after_country;
+INSERT INTO brewery (name, country_id) VALUES ('Trappist Brew', (SELECT id FROM country WHERE name = 'Belgium'));
+
+B:
+SELECT * FROM brewery;
+ 
+----------------------------------------------------------
+Read Committed
+Уровень по умолчанию в PostgreSQL
+гарантирует что транзакция видит только закоммиченные данные. 
+Но одна и та же строка может вернуть разные 
+значения в рамках одной транзакции если другая транзакция 
+успела закоммитить изменение между двумя чтениями.
+Каждый отдельный запрос внутри 
+транзакции видит снимок данных на момент начала этого запроса, а не на момент начала транзакции
+Поэтому два одинаковых select в одной транзакции могут вернуть разные данные
+
+Repeatable Read
+транзакция видит снимок данных на момент 
+начала транзакции и этот снимок не меняется до конца. Одна и та же 
+строка всегда вернёт одно и то же значение.
